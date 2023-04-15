@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'package:dio/dio.dart';
+import 'package:practical_demo/utilities/common_functions.dart';
 
 class CustomInterceptors extends Interceptor {
 
@@ -21,26 +22,6 @@ class CustomInterceptors extends Interceptor {
   @override
    onError(DioError err, ErrorInterceptorHandler handler) async{
     print('ERROR[${err.message.toString()}] => PATH: ${err.requestOptions.path} ${err.type} -- ${err.response.toString()} -- ${err.type}');
-    try
-    {
-      Map<String , dynamic> customResponse = {
-        "error" : true,
-        "message" : "Error Occurred."
-      };
-
-      Response response = Response(data: customResponse, requestOptions: err.requestOptions);
-      return handler.resolve(response!);
-    }
-    catch(e)
-    {
-      Map<String , dynamic> customResponse = {
-        "error" : true,
-        "message" : "Error Occurred."
-      };
-
-      Response response = Response(data: customResponse, requestOptions: err.requestOptions);
-      return handler.resolve(response!);
-    }
+    return handler.resolve(err.response?? Response(data: jsonEncode(CommonFunctions.errorJson()) , requestOptions:  err.requestOptions));
   }
-
 }

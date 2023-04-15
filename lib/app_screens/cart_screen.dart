@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:practical_demo/bloc_helper/cart_items_bloc.dart';
 import 'package:practical_demo/models/item_model.dart';
+import 'package:practical_demo/utilities/common_functions.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as path;
 
@@ -19,7 +20,7 @@ class _CartItemsState extends State<CartItems> {
   late CartItemsBloc cartItemsBloc;
   
   Future initDb() async {
-    cartDatabase = await openDb();
+    cartDatabase = await CommonFunctions().openDb();
     cartDatabase.query("cart").then((value) {
       List<ItemModel> x = value.map((e) => ItemModel.fromJson(e)).toList();
       cartItemsBloc.add(CartItemListEvent(cartItems: x));
@@ -27,13 +28,6 @@ class _CartItemsState extends State<CartItems> {
     return;
   }
 
-  Future openDb() async {
-    final db = await openDatabase(
-      path.join(await getDatabasesPath(), 'cart.db'),
-      version: 1,
-    );
-    return db;
-  }
 
   deleteItems(int id)
   async {
@@ -47,14 +41,15 @@ class _CartItemsState extends State<CartItems> {
   Widget cartItemsList(ItemModel itemModel) {
 
     return Card(
-
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Row(
           children: [
             Expanded(
                 flex: 4,
-                child: Image.network(itemModel.featuredImage!) ),
+                child: Image.network(itemModel.featuredImage! , errorBuilder: (ctx,_, __){
+                  return Container();
+                },) ),
             const SizedBox(width: 5,),
             Expanded( flex : 8 ,child: Container(
               child: Column(
@@ -108,9 +103,6 @@ class _CartItemsState extends State<CartItems> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    SchedulerBinding.instance.addPostFrameCallback((timeStamp) { 
-
-    });
     initDb();
   }
 

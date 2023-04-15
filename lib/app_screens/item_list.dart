@@ -29,26 +29,8 @@ class _ItemListState extends State<ItemList> {
   Database? cartDatabase;
   late ItemQuantityBloc itemQuantityBloc;
 
-  Future initDb() async{
-    cartDatabase = await openDb();
-    await cartDatabase!.execute("CREATE TABLE IF NOT EXISTS cart(id INT , price INT , slug TEXT, title TEXT, description TEXT, created_at TEXT , featured_image TEXT , status TEXT , quantity INT)");
-    return;
-  }
-
-  Future openDb() async {
-    final db = await openDatabase(
-      path.join(await getDatabasesPath(), 'cart.db'),
-      version: 1,
-    );
-    return db;
-  }
-
   showQuantityDialog(ItemModel itemModel)
   async {
-    if(cartDatabase == null)
-    {
-      await initDb();
-    }
     int n = await findItemWithSameID(itemModel.id!);
     if(n != 0)
       {
@@ -100,17 +82,26 @@ class _ItemListState extends State<ItemList> {
 
   findItemWithSameID(int id) async
   {
+    cartDatabase ??= await CommonFunctions().initDb();
+    print("-- ${cartDatabase?.isOpen}");
     List<Map<String, dynamic>> n = await cartDatabase!.query("cart" , where: "id=$id" , columns: ["id"]);
     return n.length;
   }
   fetchItems() async
   {
+
+    if(itemListBloc.state is ListOfItemsState)
+       {
+         itemListBloc.add(ListOfItemsEvent(itemList: []));
+         (itemListBloc.state as ListOfItemsState).itemList = [];
+       }
     Map<String,dynamic> data = {
       "page": 1,
       "perPage": 5
     };
     Response response = await Apis().fetchItems(data);
 
+    print("rs ${response.data}");
     ErrorModel errorModel = ErrorModel.fromJson(jsonDecode(response.data));
 
     if(errorModel.error == null)
@@ -170,16 +161,18 @@ class _ItemListState extends State<ItemList> {
     super.initState();
     SchedulerBinding.instance.addPostFrameCallback((timeStamp) { 
       itemListBloc = BlocProvider.of<ItemListBloc>(context);
+      itemListBloc.add(ListOfItemsEvent(itemList: []));
       itemQuantityBloc = BlocProvider.of<ItemQuantityBloc>(context);
       itemQuantityBloc.add(NoOfItemsEvent(quantity: 0));
+      fetchItems();
     });
-    fetchItems();
+
   }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(child: Scaffold(
-      appBar: AppBar(
+      appBar:  AppBar(
         title: const Text("Shopping Mall"),
         actions: [
           IconButton(onPressed: (){
@@ -188,28 +181,33 @@ class _ItemListState extends State<ItemList> {
         ],
         centerTitle: true,
       ),
-      body: BlocConsumer<ItemListBloc, ItemListState>(
-        listener: (context, state) {
-          // TODO: implement listener
+      body: RefreshIndicator(
+        onRefresh:(){
+          return fetchItems();
         },
-        builder: (context, state) {
-          if(state is ListOfItemsState)
-            {
-              return Container(
-                padding: const EdgeInsets.all(10),
-                child: GridView.builder( gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10.0,
-                ),
-                    itemCount: state.itemList?.length,
-                    itemBuilder: (ctx , index){
-                      return Item(state, index);
-                    }),
-              );
-            }
-         return Container();
-        },
+        child: BlocConsumer<ItemListBloc, ItemListState>(
+          listener: (context, state) {
+            // TODO: implement listener
+          },
+          builder: (context, state) {
+            if(state is ListOfItemsState)
+              {
+                return Container(
+                  padding: const EdgeInsets.all(10),
+                  child: GridView.builder( gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10.0,
+                  ),
+                      itemCount: state.itemList?.length,
+                      itemBuilder: (ctx , index){
+                        return Item(state, index);
+                      }),
+                );
+              }
+           return Container();
+          },
+        ),
       ),
     ));
   }
