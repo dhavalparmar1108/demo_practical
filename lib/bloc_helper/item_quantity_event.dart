@@ -5,7 +5,7 @@ abstract class ItemQuantityEvent {}
 
 class NoOfItemsEvent extends ItemQuantityEvent
 {
-  int quantity = 0 ;
+  int quantity = 1 ;
 
   NoOfItemsEvent({required this.quantity});
 }

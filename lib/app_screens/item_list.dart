@@ -28,6 +28,7 @@ class _ItemListState extends State<ItemList> {
   late ItemListBloc itemListBloc;
   Database? cartDatabase;
   late ItemQuantityBloc itemQuantityBloc;
+  ScrollController scrollController = ScrollController();
 
   showQuantityDialog(ItemModel itemModel)
   async {
@@ -54,10 +55,10 @@ class _ItemListState extends State<ItemList> {
                   {
                     return Text(state.quantity.toString());
                   }
-                return const Text("0");
+                return const Text("1");
               }, listener: (context , state){}),
               IconButton(onPressed: (){
-                if((itemQuantityBloc.state as NoOfItemState).quantity - 1 >= 0 ) {
+                if((itemQuantityBloc.state as NoOfItemState).quantity - 1 >= 1 ) {
                   itemQuantityBloc.add(NoOfItemsEvent(quantity: (itemQuantityBloc.state as NoOfItemState).quantity - 1));
                 }
               }, icon: const Icon(Icons.remove))
@@ -77,7 +78,7 @@ class _ItemListState extends State<ItemList> {
     itemModel.quantity = (itemQuantityBloc.state as NoOfItemState).quantity;
     await cartDatabase!.insert("cart", itemModel.toJson() , conflictAlgorithm: ConflictAlgorithm.replace);
     CommonFunctions.showFlutterToast("Successfully Added");
-    (itemQuantityBloc.state as NoOfItemState).quantity = 0;
+    (itemQuantityBloc.state as NoOfItemState).quantity = 1;
   }
 
   findItemWithSameID(int id) async
@@ -90,10 +91,10 @@ class _ItemListState extends State<ItemList> {
   fetchItems() async
   {
 
-    if(itemListBloc.state is ListOfItemsState)
+    if(itemListBloc.state is ItemListInitial)
        {
          itemListBloc.add(ListOfItemsEvent(itemList: []));
-         (itemListBloc.state as ListOfItemsState).itemList = [];
+         //(itemListBloc.state as ListOfItemsState).itemList = [];
        }
     Map<String,dynamic> data = {
       "page": 1,
@@ -101,13 +102,13 @@ class _ItemListState extends State<ItemList> {
     };
     Response response = await Apis().fetchItems(data);
 
-    print("rs ${response.data}");
     ErrorModel errorModel = ErrorModel.fromJson(jsonDecode(response.data));
 
     if(errorModel.error == null)
       {
         ItemListResponseModel itemListResponseModel = ItemListResponseModel.fromJson(jsonDecode(response.data));
-        itemListBloc.add(ListOfItemsEvent(itemList: itemListResponseModel.data!.map((e) => ItemModel.fromJson(e.toJson())).toList()));
+        (itemListBloc.state as ListOfItemsState ).itemList?.addAll(itemListResponseModel.data!.map((e) => ItemModel.fromJson(e.toJson())).toList());
+        itemListBloc.add(ListOfItemsEvent(itemList:(itemListBloc.state as ListOfItemsState ).itemList ));
       }
     else
       {
@@ -163,10 +164,26 @@ class _ItemListState extends State<ItemList> {
       itemListBloc = BlocProvider.of<ItemListBloc>(context);
       itemListBloc.add(ListOfItemsEvent(itemList: []));
       itemQuantityBloc = BlocProvider.of<ItemQuantityBloc>(context);
-      itemQuantityBloc.add(NoOfItemsEvent(quantity: 0));
+      itemQuantityBloc.add(NoOfItemsEvent(quantity: 1));
+
+      /// This is used for Pagination.
+      scrollController.addListener(() {
+        if(scrollController.position.pixels == scrollController.position.maxScrollExtent)
+          {
+            fetchItems();
+          }
+
+      });
       fetchItems();
     });
 
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+    scrollController?.dispose();
   }
 
   @override
@@ -181,33 +198,30 @@ class _ItemListState extends State<ItemList> {
         ],
         centerTitle: true,
       ),
-      body: RefreshIndicator(
-        onRefresh:(){
-          return fetchItems();
+      body: BlocConsumer<ItemListBloc, ItemListState>(
+        listener: (context, state) {
+          // TODO: implement listener
         },
-        child: BlocConsumer<ItemListBloc, ItemListState>(
-          listener: (context, state) {
-            // TODO: implement listener
-          },
-          builder: (context, state) {
-            if(state is ListOfItemsState)
-              {
-                return Container(
-                  padding: const EdgeInsets.all(10),
-                  child: GridView.builder( gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10.0,
-                  ),
-                      itemCount: state.itemList?.length,
-                      itemBuilder: (ctx , index){
-                        return Item(state, index);
-                      }),
-                );
-              }
-           return Container();
-          },
-        ),
+        builder: (context, state) {
+          if(state is ListOfItemsState)
+            {
+              return Container(
+                padding: const EdgeInsets.all(10),
+                child: GridView.builder(
+                    controller: scrollController,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10.0,
+                ),
+                    itemCount: state.itemList?.length,
+                    itemBuilder: (ctx , index){
+                      return Item(state, index);
+                    }),
+              );
+            }
+         return Container();
+        },
       ),
     ));
   }

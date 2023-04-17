@@ -4,6 +4,7 @@ import 'package:practical_demo/app_screens/cart_screen.dart';
 import 'package:practical_demo/app_screens/item_list.dart';
 import 'package:practical_demo/bloc_helper/cart_items_bloc.dart';
 import 'package:practical_demo/bloc_helper/item_list_bloc.dart';
+import 'package:practical_demo/bloc_helper/item_price_bloc.dart';
 import 'package:practical_demo/bloc_helper/item_quantity_bloc.dart';
 
 void main() {
@@ -20,7 +21,8 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (context) => ItemListBloc()),
         BlocProvider(create: (context) => CartItemsBloc()),
-        BlocProvider(create: (context) => ItemQuantityBloc())
+        BlocProvider(create: (context) => ItemQuantityBloc()),
+        BlocProvider(create: (context) => ItemPriceBloc())
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
